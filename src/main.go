@@ -3,10 +3,14 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/dysmsapi"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
+	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type User struct {
@@ -21,6 +25,19 @@ func check (err error){
 		fmt.Println(err)
 	}
 }
+
+func GenValidateCode(width int) string {
+	numeric := [10]byte{0,1,2,3,4,5,6,7,8,9}
+	r := len(numeric)
+	rand.Seed(time.Now().UnixNano())
+
+	var sb strings.Builder
+	for i := 0; i < width; i++ {
+		fmt.Fprintf(&sb, "%d", numeric[ rand.Intn(r) ])
+	}
+	return sb.String()
+}
+
 var Db *sql.DB
 func init(){
 	var err error
@@ -94,9 +111,30 @@ func deleteUser(c *gin.Context)  {
 	}
 }
 
+func getSend(c *gin.Context)  {
+	client, err := dysmsapi.NewClientWithAccessKey("cn-hangzhou", "LTAI4FybwHjRM7E2YDggWgPg", "jNwPYQm1Y7aBMuZGhVXuASiSoQdWyO")
+
+	request := dysmsapi.CreateSendSmsRequest()
+	request.Scheme = "https"
+
+	request.PhoneNumbers = "13015759718"
+	request.SignName = "学习笔记App"
+	request.TemplateCode = "SMS_191801632"
+	request.TemplateParam = "{\"code\":\"1234\"}"
+
+	response, err := client.SendSms(request)
+	check(err)
+	fmt.Printf("response is %#v\n", response)
+	c.JSON(http.StatusOK, gin.H{
+		"code":200,
+		"msg": "获取验证码成功",
+	})
+}
+
 func main() {
 	router := gin.Default()
 	router.GET("/users", getUser)
 	router.POST("/users",deleteUser)
+	router.POST("getSend",getSend)
 	router.Run(":80") // listen and serve on 0.0.0.0:8080
 }
